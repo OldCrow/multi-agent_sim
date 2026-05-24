@@ -13,6 +13,8 @@ Summary This project is a consolidation of numerous other smaller projects. I am
 - Standardize RL with a base class, make applicable to all techniques.
 - ~~Standardize the planners in/out~~.
 - Store data online.
+- Make more robust to incorrect configs.
+- Build unit tests.
 
 # Project 2: Learning 
 

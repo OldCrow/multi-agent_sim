@@ -233,24 +233,18 @@
             "sigmoidize": false
         },
         "QL_learning_lattice": {
-            "param1": 1.0
+            "placeholder": 1.0
         },
         "consensus": {
-            "param1": 1.0
+            "placeholder": 1.0
         },
         "gradient_estimation": {
-            "param1": 1.0
+            "placeholder": 1.0
         }
     },
     "data": {
-        "save_data": true,
         "data_dir": "data/data/",
-        "data_file": "data.h5",
-        "record_interval": 1,
-        "record_agents": true,
-        "record_targets": true,
-        "record_obstacles": true,
-        "record_learning": true
+        "data_file": "data.h5"
     },
     "visualization": {
         "plot_results": true,
@@ -260,6 +254,6 @@
         "placeholder": false
     },
     "learners": {
-        "consensus_lattice": "Config not available for consensus_lattice"
+        "consensus_lattice": false
     }
 }
