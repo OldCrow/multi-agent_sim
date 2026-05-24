@@ -7,7 +7,7 @@
     },
     "simulation": {
         "Ti": 0,
-        "Tf": 180,
+        "Tf": 90,
         "Ts": 0.02,
         "dimens": 2,
         "verbose": 1,
