@@ -42,7 +42,7 @@ Vol. 51 (3), 2006.
 
 <p float="center">
     <img src="../../visualization/public/pinning/animation_quads.gif" width="40%"> 
-    <img src="../../visualization/public/hetero_lattice/animation_ranges.gif" width="40%">
+    <img src="../../visualization/public/pinning/animation_ranges.gif" width="40%">
     <figcaption style="font-size: 1em; margin-top: 5px;"><strong> Lattice variations: </strong> Quadcopters and showing sensor ranges. </figcaption>
 </p>
 
