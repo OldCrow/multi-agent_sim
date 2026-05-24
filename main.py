@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This project implements various multi-agent swarming strategies: 
 
-    swarming = decentralized + asynchronous + local 
-
-The following agent dynamics are available:
-    
-    1. double integrator 
-    2. quadrotor helicopter (quadcopter)
+See README.md for details of this project
+See ./docs/devnotes.md for ongoing development notes
 
 Created on Tue Dec 22 11:48:18 2020
 
 @author: tjards
-
-See devnotes.md for updates. 
 
 """
 
@@ -24,11 +17,7 @@ See devnotes.md for updates.
 # official packages 
 import numpy as np
 import matplotlib.pyplot as plt
-#plt.style.use('dark_background')
-#plt.style.use('classic')
 plt.style.use('default')
-#plt.style.available
-#plt.style.use('Solarize_Light2')
 import json
 import h5py
 import os
@@ -38,16 +27,20 @@ import random
 # custom packages
 import config.config as cfg
 
-def main():
+# options 
+#plt.style.use('dark_background')
+#plt.style.use('classic')
+#plt.style.available
+#plt.style.use('Solarize_Light2')
+
+def run_simulation():
 
     #%% Setup Simulation
     # ------------------
 
-    # config path
+    # configs
     config_directory = 'config/'
     config_path = os.path.join(config_directory, 'config.json')
-
-    # create an immutable config object
     config = cfg.Config(config_path)
 
     # reproducibility
@@ -58,7 +51,6 @@ def main():
     data_directory = config.data_dir
     data_file = config.data_file
     data_file_path = os.path.join(data_directory, data_file)
-
 
     #%% build the system
     # ------------------
@@ -116,7 +108,6 @@ def main():
         if config.verbose == 1 and (round(t,2)).is_integer():
             print(round(t,1),' of ',config.Tf,' sec completed.')
         
-
         # Update learning 
         # ---------------
         kwargs = learner.conductor.update_args(Agents, Controller, config.strategy, kwargs)
@@ -154,36 +145,40 @@ def main():
         
     #%% Produce plots
     # --------------
-    import visualization.plot_sim as plot_sim
+    if config.plot_results:
+        import visualization.plot_sim as plot_sim
 
-    if config.verbose == 1:
-        print('building plots.')
+        if config.verbose == 1:
+            print('building plots.')
 
-    plot_sim.plotMe(data_file_path)
+        plot_sim.plotMe(data_file_path)
 
     #%% Produce animation of simulation
     # --------------------------------- 
-    import visualization.animation_sim as animation_sim
+    if config.animate_results:
+        import visualization.animation_sim as animation_sim
 
-    if config.verbose == 1:
-        print('building animation.')
+        if config.verbose == 1:
+            print('building animation.')
         
-    with open(config_path, 'r') as configs_sim:
-        config_sim = json.load(configs_sim)
-        config_Ts = config_sim['simulation']['Ts']
-        config_dimens = config_sim['simulation']['dimens']
-        config_tactic_type = config_sim['simulation']['strategy']
+        with open(config_path, 'r') as configs_sim:
+            config_sim = json.load(configs_sim)
+            config_Ts = config_sim['simulation']['Ts']
+            config_dimens = config_sim['simulation']['dimens']
+            config_tactic_type = config_sim['simulation']['strategy']
 
-    ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
+        ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
 
     #%% experimental save
     if config.experimental_save:
         from experiments.experiment_manager import save_experiment
         save_experiment()
 
-# main 
+# Entry point
+# ------------
 if __name__ == "__main__":
-    main()
+
+    run_simulation()
 
 
 

@@ -29,15 +29,15 @@ save_plots = True
 show_plots= False 
 
 # individual plots
-plot_proximity = True
-plot_distance_from_target = True
-plot_obstacles = True
-plot_k_connect = True
+plot_proximity = False
+plot_distance_from_target = False
+plot_obstacles = False
+plot_k_connect = False
 plot_energy = True
 plot_spacing = True
-plot_constraints = True
+plot_constraints = False
 plot_heatmap = True
-plot_CALA_learners = True
+plot_CALA_learners = False
 
 
 
@@ -256,6 +256,7 @@ def plotMe(data_file_path):
     if plot_spacing:
     
         fig, ax = plt.subplots()
+        start = plot_start
         
         # set forst axis
         
@@ -298,6 +299,7 @@ def plotMe(data_file_path):
         _, lattice_violations = data_manager.load_data_HDF5('History', 'lattice_violations', data_file_path)
         
         fig, ax = plt.subplots()
+        start = plot_start
         
         # set forst axis
         

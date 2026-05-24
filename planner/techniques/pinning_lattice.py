@@ -3,23 +3,23 @@
 """
 
 This module implements pinning control for flocking as a lattice
-It is also RL-enabled, adjusting lattice scale to optimize on some user-defined objective
-Default objective is to maximize k-connectivity
 
-Preliminaries:
+To do:
+- RL-enabled, adjusting lattice scale to optimize on some user-defined objective
+- Default objective is to maximize k-connectivity
+
+Graph representation:
     - Let us consider V nodes (vertices, agents)
     - Define E is a set of edges (links) as the set of ordered pairs
-    from the Cartesian Product V x V, E = {(a,b) | a /in V and b /in V}
+    from the Cartesian Product V x V, E = {(a,b) | a in V and b in V}
     - Then we consider Graph, G = {V,E} (nodes and edges)
-    - G is simple: (a,a) not \in E \forall a \in V 
-    - G is undirected: (a,b) \in E <=> (b,a) \in E
-    - Nodes i,j are neighbours if they share an edge, (i,j) /in E
+    - G is simple: (a,a) not in E \forall a in V 
+    - G is undirected: (a,b) in E <=> (b,a) in E
+    - Nodes i,j are neighbours if they share an edge, (i,j) in E
     - d1=|N_1| is the degree of Node 1, or, the number of neighbours
 
 # Pinning control is structured as follows:
-    
-    u =     interaction (a)            + obstacle (b) + target (g)
-    u = {cohesion_term + alignment_term} + obstacle_term + navigation term
+    u =     {cohesion_term + alignment_term} + obstacle_term + navigation term
 
 Created on Tue Dec 20 13:32:11 2022
 
@@ -33,8 +33,7 @@ Some related work:
 Some default parameters:
 
     # learning parameters
-    hetero_lattice      = 1     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
-
+    hetero_lattice      = 0     # support heterogeneous lattice size? 1 = yes (Consensus), 0 = no
     learning            = 0     # requires heterolattice, do we want to learn lattice size? 1 = yes (QL), 0 = no
     learning_grid_size  = -1    # grid size for learning (nominally, -1, for 10 units x 10 units)
 
@@ -58,14 +57,12 @@ Some default parameters:
 
 #%% import stuff
 # --------------
-import numpy as np
-import random
-import os
-import json
-#import random 
-import copy
-import config.config as cfg
 
+# default packages
+import numpy as np
+
+# custom packages
+import config.config as cfg
 from planner.techniques.pinning_gradients_default import velocity_alignment as alignment_term
 from planner.techniques.pinning_gradients_default  import navigation as navigation_term
 from planner.techniques.pinning_gradients_default  import compute_cmd_b as obstacle_term

@@ -7,7 +7,7 @@
     "zoom_fixed": 7,
     "pan": 0,
     "connection": 1,
-    "connection_thresh": 5.1,
+    "connection_thresh": 10.1,
     "updated_connections": 1,
     "head": 1.0,
     "pins_overide": 1,
@@ -19,6 +19,6 @@
     "color_projection": ["black", "black"],
     "projection_plot": false,
     "show_plot": true,
-    "show_ranges": false
+    "show_ranges": true
   }
 }

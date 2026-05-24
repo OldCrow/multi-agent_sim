@@ -70,6 +70,12 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
                 # we can also tune these lattice sizes (optional)
                 lattice_learner = planner_configs['learning']
                 if lattice_learner == 1:
+
+                    # DEBUF: this isn't ready yet
+                    if lattice_learner == 1:
+                        raise NotImplementedError("ERROR: Learning Lattice feature still in development.")
+
+                    # in dev code
                     import learner.QL_learning_lattice as learning_lattice
                     
                     # initiate the learning agent

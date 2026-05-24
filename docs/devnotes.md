@@ -6,13 +6,13 @@ This document is a place for developers to collaborate on various aspects of thi
 
 Summary This project is a consolidation of numerous other smaller projects. I am starting a cleanup project, with the following goals:
 
+- Sim runs slowly. Vectorized the execution and store data more efficiently.
 - ~~Define a custom venv with documented deps/requirements.~~
 - ~~Build a single config file that feeds the entire simulation.~~
 - ~~I use a mix of scripting and object-oriented modules; make better use of object-oriented design.~~
-- Treat the simulation like a pipeline.
-- The reinforcement learning modules, in particular, are hard to follow; make these more modular.
+- Standardize RL with a base class, make applicable to all techniques.
 - ~~Standardize the planners in/out~~.
-- Be more efficient in how data is stored online.
+- Store data online.
 
 # Project 2: Learning 
 
@@ -134,20 +134,4 @@ Essentially, we are attempting to maximize the value of the dot product between 
 
 #### Results so far 
 
-It's learning...
-
-<p float="center">
-    <img src="./visualization/public/kleber/CALA_distributions.gif" width="60%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;">Fig.1 - Probability Distribution Function (PDF) of altitude (blue) and azimuth (orange) parameters. </figcaption>
-</p>
-
-<p float="center">
-    <img src="./visualization/public/kleber/CALA_plots_set.png" width="60%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 2 - Here we see the rewards are being maximized. </figcaption>
-</p>
-
-<p float="center">
-    <img src="./visualization/public/kleber/CALA_exploration_contours_hull.png" width="60%"> 
-    <figcaption style="font-size: 1em; margin-top: 5px;">Fig. 3 - What is being explored. </figcaption>
-</p>
-
+Available [here](readme_subpages/dynamic_structures.md)

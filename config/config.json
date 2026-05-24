@@ -12,14 +12,14 @@
         "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "shepherding",
-        "random_seed": 42,
+        "strategy": "encirclement",
+        "random_seed": 41,
         "f": 0,
         "experimental_save": false,
         "obstacle_avoidance_strategy": "flocking_saber"
     },
     "agents": {
-        "nAgents":15,
+        "nAgents": 7,
         "dynamics": "double integrator",
         "rAgents": 0.5,
         "iSpread": 40,
@@ -34,8 +34,8 @@
     "obstacles": {
         "nObs": 0,
         "vehObs": 0,
-        "oSpread": 20,
-        "manual": true,
+        "oSpread": 30,
+        "manual": false,
         "manual_positions": {
             "x": -2.4,
             "y": 1.2,
@@ -44,8 +44,8 @@
         }
     },
     "orchestrator": {
-        "pin_update_rate": 5,
-        "pin_selection_method": "degree",
+        "pin_update_rate": 10,
+        "pin_selection_method": "degree_leafs",
         "criteria_table": {
             "radius": true,
             "aperature": false
@@ -127,7 +127,7 @@
                 "gromacs_beta": 1.0
             },
             "pinning_lattice": {
-                "hetero_lattice": 1,
+                "hetero_lattice": 0,
                 "learning": 0,
                 "learning_grid_size": -1,
                 "flocking_method": "lennard_jones",
@@ -144,7 +144,6 @@
                 "c2_g": 0.4472
             },
             "encirclement": {
-                "param1": 1.0,
                 "c1_d": 2,
                 "c2_d": 2.8284,
                 "r_max": 50,
@@ -255,17 +254,10 @@
     },
     "visualization": {
         "plot_results": true,
-        "animate_results": true,
-        "plots_dir": "visualization/plots",
-        "animations_dir": "visualization/animations",
-        "show_trajectory": true,
-        "show_connectivity": true
+        "animate_results": true
     },
     "experiments": {
-        "experiment_name": "baseline_lemni",
-        "num_runs": 1,
-        "save_configs": true,
-        "save_metadata": true
+        "placeholder": false
     },
     "learners": {
         "consensus_lattice": "Config not available for consensus_lattice"

@@ -39,7 +39,7 @@ def validate_configs(config):
 class Config:
     
     # define which top-level sections to auto-extract
-    HYPER_CONFIGS = ['simulation', 'agents', 'orchestrator', 'data']
+    HYPER_CONFIGS = ['simulation', 'agents', 'orchestrator', 'data', 'visualization']
     
     def __init__(self, config_path):
         

@@ -80,18 +80,18 @@ class Planner(BasePlanner):
         TEMP_quat_0_1 = circle_config.get('quat_0_1', 0.0)
         TEMP_quat_0_2 = circle_config.get('quat_0_2', 0.0)
         self.quat_0 = quat.e2q(np.array([TEMP_quat_0_0, TEMP_quat_0_1, TEMP_quat_0_2]))
-        
-        # Store as instance attributes for use in methods
-        self.d = self.r_desired  # Make compatible with orchestrator pattern
 
         # compute desired separation (for analyzing results)
         nAgents = cfg.get_config(config_data, 'agents.nAgents')
         print(nAgents)
         self.desired_separation = self.compute_desired_sep(self.r_desired, nAgents)
 
+        # Store as instance attributes for use in methods
+        self.d = self.desired_separation # Make compatible with orchestrator pattern
+
         # graph parameters (standardized in base class)
         self.sensor_range_matrix = self.r_max * np.ones((nAgents, nAgents))
-        self.connection_range_matrix = self.r_max * np.ones((nAgents, nAgents))
+        self.connection_range_matrix = self.d * np.ones((nAgents, nAgents))
 
     def update_trajectory(self, Trajectory, targets, **kwargs):
 

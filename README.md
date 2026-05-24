@@ -21,9 +21,9 @@ Documentation:
 
 # Methodology
 
-The swarming techniques above are all implemented as high-level trajectory planners, assuming underlying double integrator dynamics. 
-When quadcopter dynamics are applicable, these command signals - which take the form of accelerations in Cartesian space - are then converted into velocity setpoints.
-The quadcopters make use of 3 nested control loops (translational velocity, angular position, and angular velocity) to track the desired trajectory.
+- The swarming techniques above are all implemented as high-level trajectory planners, assuming underlying double integrator dynamics. 
+- When quadcopter dynamics are applicable, these command signals - which take the form of accelerations in Cartesian space - are then converted into velocity setpoints.
+- The quadcopters make use of 3 nested control loops (translational velocity, angular position, and angular velocity) to track the desired trajectory.
 
 ---
 

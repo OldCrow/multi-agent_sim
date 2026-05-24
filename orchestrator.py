@@ -21,7 +21,6 @@ Created on Mon Jan  4 12:45:55 2021
 
 @author: tjards
 
-
 """
 
 #%% Import stuff
@@ -42,7 +41,6 @@ config_loaded = cfg.load_config('config/config.json')
 tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
 
 import learner.conductor
-
 
 #%% Build the system
 # ------------------
@@ -68,14 +66,12 @@ def build_system(config):
         
         # instantiate the obstacles 
         # -------------------------
-        import obstacles.obstacles as obstacles  
-        #Obstacles = obstacles.Obstacles(config.strategy, Targets.targets, config.dimens)  
+        import obstacles.obstacles as obstacles   
         Obstacles = obstacles.Obstacles(Targets.targets)  
         
         # instatiate any learning
         # -----------------------
         import learner.conductor
-        #Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts, config.config_path)
         Learners = learner.conductor.initialize(Agents, config.strategy, config.learning_ctrl, config.Ts, config._data)
                 
     return Agents, Targets, Trajectory, Obstacles, Learners

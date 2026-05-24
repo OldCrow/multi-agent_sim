@@ -31,9 +31,9 @@ with open(config_path, 'r') as config_file:
     config = json.load(config_file)
     config_agents = config['agents']
     
-    # pull out a radius (if avail)
-    #r_range = config.get('saber', {}).get('r', 0)
-    r_range = config.get('planner', {}).get('techniques', {}).get('flocking_saber', {}).get('r', 0)
+    # pull out a radius (if avail) for the active strategy
+    current_strategy = config.get('simulation', {}).get('strategy', '')
+    r_range = config.get('planner', {}).get('techniques', {}).get(current_strategy, {}).get('r_max', 0)
 
 
 plot_quadcopter = 1 if config_agents.get('dynamics') == 'quadcopter' else 0
@@ -355,57 +355,46 @@ def update_agents_and_obstacles(i, states_all, targets_all, obstacles_all,
 # update the connections
 def update_connectivity(i, pos, lattices, nVeh, lattices_connections, connectivity):
 
-    x_lat = np.zeros((2 * nVeh, nVeh))
-    y_lat = np.zeros((2 * nVeh, nVeh))
-    z_lat = np.zeros((2 * nVeh, nVeh))
-    
-    # cycle through agents
+    # cycle through each pair (j, k)
     for j in range(nVeh):
-        
-        # and neighbours
+
         for k in range(nVeh):
-            
-            # ignore self
+
+            # get the line object for this pair
+            line = lattices[j][k]
+
+            # we don't want self
             if j == k:
-                x_lat[2*k:2*k+2, j] = pos[0, j]
-                y_lat[2*k:2*k+2, j] = pos[1, j]
-                z_lat[2*k:2*k+2, j] = pos[2, j]
-            
-            else:
-                
-                # updated the lattice connection theshold
+                line.set_data([], [])
+                if line.axes.name == '3d':
+                    line.set_3d_properties([])
+                continue
+
+            if connectivity[i*numFrames, j, k] > 0:
                 dist = np.linalg.norm(pos[:, j] - pos[:, k])
                 connection_thresh_updated = (lattices_connections[i*numFrames, j, k] + 0.5) if updated_connections == 1 else connection_thresh
-                
-                # if in range (i.e., via adjanceny matrix), make grey
-                if connectivity[i*numFrames, j, k] > 0:
-                    #lattices[j].set_color('gray')
-                    lattices[j].set_color(color_lattice[0])
-                    
-                    lattices[j].set_linestyle('--')
-                    lattices[j].set_alpha(0.3)
-                    
-                    # if in range and also within lattice threshold, make blue
-                    if dist <= connection_thresh_updated:
-                        #lattices[j].set_color('b')
-                        lattices[j].set_color(color_lattice[1])
-                        lattices[j].set_alpha(0.6)
-                    
-                    # draw the line between agent j and agent k.
-                    x_lat[2*k, j] = pos[0, j]
-                    x_lat[2*k+1, j] = pos[0, k]
-                    y_lat[2*k, j] = pos[1, j]
-                    y_lat[2*k+1, j] = pos[1, k]
-                    z_lat[2*k, j] = pos[2, j]
-                    z_lat[2*k+1, j] = pos[2, k]
+
+                # if close enough, draw connection
+                if dist <= connection_thresh_updated:
+                    line.set_color(color_lattice[1])
+                    line.set_alpha(0.6)
+                # else, draw in range but not connected
                 else:
-                    # if not in range, terminate line
-                    x_lat[2*k:2*k+2, j] = pos[0, j]
-                    y_lat[2*k:2*k+2, j] = pos[1, j]
-                    z_lat[2*k:2*k+2, j] = pos[2, j]
-        lattices[j].set_data(x_lat[:, j], y_lat[:, j])
-        if lattices[j].axes.name == '3d':
-            lattices[j].set_3d_properties(z_lat[:, j])
+                    line.set_color(color_lattice[0])
+                    line.set_alpha(0.3)
+
+                xd = [pos[0, j], pos[0, k]]
+                yd = [pos[1, j], pos[1, k]]
+                zd = [pos[2, j], pos[2, k]]
+                line.set_data(xd, yd)
+                if line.axes.name == '3d':
+                    line.set_3d_properties(zd)
+            else:
+
+                # not in range
+                line.set_data([], [])
+                if line.axes.name == '3d':
+                    line.set_3d_properties([])
 
 
 
@@ -545,19 +534,28 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
             tail, = ax.plot([], [], [], ':', lw=1, color=color_scheme[0])
             head_line, = ax.plot([], [], [], '-', lw=1, color=color_scheme[0])
             target, = ax.plot([], [], [], 'x', color=color_scheme[3])
-            lattice_line, = ax.plot([], [], [], ':', lw=1, color=color_lattice[1])
         else:
             dot, = ax.plot([], [], 'o', color = color_scheme[0], ms=3)
             tail, = ax.plot([], [], ':', lw=1, color=color_scheme[0])
             head_line, = ax.plot([], [], '-', lw=1, color=color_scheme[0])
             target, = ax.plot([], [], 'x', color = color_scheme[3])
-            lattice_line, = ax.plot([], [], ':', lw=1, color=color_lattice[1])
         lines_dots.append(dot)
         lines_tails.append(tail)
         lines_heads.append(head_line)
         lines_targets.append(target)
-        lattices.append(lattice_line)
         node_colors.append([color_scheme[0]]) # default blue
+
+    # one line object per (j, k) pair for independent edge coloring
+    lattices = []
+    for j in range(nVeh):
+        row = []
+        for k in range(nVeh):
+            if dimens == 3:
+                line, = ax.plot([], [], [], '--', lw=1, color=color_lattice[0], alpha=0.3)
+            else:
+                line, = ax.plot([], [], '--', lw=1, color=color_lattice[0], alpha=0.3)
+            row.append(line)
+        lattices.append(row)
     
     # initialize obstacles (if required)
     lines_obstacles = []
