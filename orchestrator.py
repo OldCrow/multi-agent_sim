@@ -4,18 +4,19 @@
 
 This module computes the commands for various swarming strategies 
 
-The following parameters are used to control the orchestrator:    
-    pin_update_rate = 10   # number of timesteps after which we update the pins
-    pin_selection_method = 'nopins'
-        # gramian   = [future] // based on controllability gramian
-        # degree    = based on degree centrality  
-        # between   = [future] // based on betweenness centrality (buggy at nAgents < 3)
-        # degree_leafs = degree and also leaves (only one connection)
-        # nopins      = no pins
-        # allpins     = all are pins 
-    criteria_table = {'radius': True, 'aperature': False} # for graph construction 
-    sensor_aperature    = 140
-    learning_ctrl = None  # None, 'CALA'; CALA unverified for now
+The following parameters are used to control the orchestrator:   
+
+    pin_update_rate         = 10   # number of timesteps after which we update the pins
+    pin_selection_method    = 'nopins'
+        # gramian           = [future] // based on controllability gramian
+        # degree            = based on degree centrality  
+        # between           = [future] // based on betweenness centrality (buggy at nAgents < 3)
+        # degree_leafs      = degree and also leaves (only one connection)
+        # nopins            = no pins
+        # allpins           = all are pins 
+    criteria_table          = {'radius': True, 'aperature': False} # for graph construction 
+    sensor_aperature        = 140
+    learning_ctrl           = None  # None, 'CALA' (note: CALA unverified for now)
 
 Created on Mon Jan  4 12:45:55 2021
 
@@ -36,9 +37,9 @@ from planner.techniques import pinning_lattice
 import utils.swarmgraph as graphical 
 import config.config as cfg
 
-# these will be removed later, after I objectify and migrate off conditional imports 
-config_loaded = cfg.load_config('config/config.json')
-tactic_type = cfg.get_config(config_loaded, 'simulation.strategy')
+# configs
+config_loaded   = cfg.load_config('config/config.json')
+tactic_type     = cfg.get_config(config_loaded, 'simulation.strategy')
 
 import learner.conductor
 
@@ -51,7 +52,6 @@ def build_system(config):
         # instantiate the agents
         # ------------------------
         import agents.agents as agents
-        #Agents = agents.Agents(config.strategy, config.dimens)
         Agents = agents.Agents()
 
         # instantiate the targets
@@ -87,12 +87,11 @@ class Controller:
         self.Ts     = config.Ts
 
         # commands
-        self.dimens  = config.dimens
-        self.cmd = np.zeros((3,config.nAgents))
-        self.cmd[0] = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (x)
-        self.cmd[1] = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (y)
-        self.cmd[2] = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (z)
-        #if self.dimens == 2:
+        self.dimens     = config.dimens
+        self.cmd        = np.zeros((3,config.nAgents))
+        self.cmd[0]     = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (x)
+        self.cmd[1]     = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (y)
+        self.cmd[2]     = 0.001*np.random.rand(1,config.nAgents)-0.5      # command (z)
         if config.dimens == 2:
             self.cmd[2] = 0*self.cmd[2]
 
@@ -106,40 +105,43 @@ class Controller:
         if config.strategy == 'lemniscates':
                 from planner.techniques import encirclement 
                 from planner.techniques import lemniscates
-                self.planners['encirclement']     = encirclement.Planner(config._data)
-                embedding = {'encirclement': self.planners['encirclement']}
-                self.planners['lemniscates']      = lemniscates.Planner(config._data, **embedding)
+                self.planners['encirclement']       = encirclement.Planner(config._data)
+                embedding                           = {'encirclement': self.planners['encirclement']}
+                self.planners['lemniscates']        = lemniscates.Planner(config._data, **embedding)
         else:
-            planner_module = importlib.import_module(f'planner.techniques.{config.strategy}')
-            self.planners[config.strategy] = planner_module.Planner(config._data,**kwargs_init)
+            planner_module                  = importlib.import_module(f'planner.techniques.{config.strategy}')
+            self.planners[config.strategy]  = planner_module.Planner(config._data,**kwargs_init)
         obstacle_avoidance_module = importlib.import_module(f'planner.techniques.{config.obstacle_avoidance_strategy}')
         self.planners['obstacle_avoidance'] = obstacle_avoidance_module.Planner(config._data) 
+        
         # give planners access to sample rate
         self.planners[config.strategy].Ts = self.Ts
 
-
         # initialize graphs and pins
-        criteria_table = cfg.get_config(config._data, 'orchestrator.criteria_table')
-        self.connectivity_slack = cfg.get_config(config._data, 'orchestrator.connectivity_slack') # some slack to assess connectedness
+        criteria_table              = cfg.get_config(config._data, 'orchestrator.criteria_table')
+        self.connectivity_slack     = cfg.get_config(config._data, 'orchestrator.connectivity_slack') # some slack to assess connectedness
         self.Graphs                 = graphical.Swarmgraph(state, criteria_table)  
         self.Graphs_connectivity    = graphical.Swarmgraph(state, criteria_table)
 
-        self.r_matrix = self.planners[config.strategy].sensor_range_matrix   # range at which agents can sense each other 
-        self.lattice = self.planners[config.strategy].connection_range_matrix    # range at which agents are connected     
-        self.pin_matrix = self.planners[config.strategy].pin_assignments  # initialize the pin matrix based on the planner (if applicable)
+        # parameters used to update graphs and pins 
+        self.r_matrix       = self.planners[config.strategy].sensor_range_matrix        # range at which agents can sense each other 
+        self.lattice        = self.planners[config.strategy].connection_range_matrix    # range at which agents are connected     
+        self.pin_matrix     = self.planners[config.strategy].pin_assignments            # initialize the pin matrix based on the planner (if applicable)
 
+    # update connections and pins 
     def update_connections(self, state, tactic_type, **kwargs_cmd):
 
-        # update connectivity
         self.counter += 1                    # increment the counter 
 
-        if self.counter == self.config.pin_update_rate:  # only update the pins at Ts/(tunable parameter)
+        # only update the pins when time 
+        if self.counter == self.config.pin_update_rate: 
+
             self.counter = 0                 # reset counter
             
             # update the range parameters (unlikely to change)
             self.r_matrix = self.planners[tactic_type].sensor_range_matrix 
 
-            # update the connectivity parameteres (from the learning)
+            # update the connectivity parameteres 
             self.planners[tactic_type].connection_range_matrix = self.lattice
 
             # update the graphs
@@ -154,7 +156,7 @@ class Controller:
             self.planners[tactic_type].pin_assignments = self.pin_matrix
 
 
-    # integrate learninging agents (learning updates happen at the Controller object)
+    # integrate learning agents (learning updates happen at the Controller object)
     # ----------------------------
     def learning_agents(self, tactic_type, Learners):
         
@@ -193,12 +195,13 @@ class Controller:
             # or just pass the current lattice parameters
             else:
                 kwargs_cmd['d_weighted'] = self.lattice # redundant below
+            
             # pass in args required for learning
             kwargs_cmd = learner.conductor.pinning_update_args(self, kwargs_cmd)
             kwargs_cmd['directional_graph']         = self.Graphs.directional_graph
             kwargs_cmd['local_k_connectivity']      = self.Graphs.local_k_connectivity
         
-        # these should go in reynolds (later)
+        # reynolds has a unique need (encapsulate this later in the planner)
         if tactic_type == 'flocking_reynolds':
             distances = self.planners['flocking_reynolds'].order(state[0:3,:])
             kwargs_cmd['distances'] = distances

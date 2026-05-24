@@ -39,18 +39,18 @@ def run_simulation():
     # ------------------
 
     # configs
-    config_directory = 'config/'
-    config_path = os.path.join(config_directory, 'config.json')
-    config = cfg.Config(config_path)
+    config_directory    = 'config/'
+    config_path         = os.path.join(config_directory, 'config.json')
+    config              = cfg.Config(config_path)
 
     # reproducibility
     np.random.seed(config.random_seed)
     random.seed(config.random_seed)
 
     # define data paths
-    data_directory = config.data_dir
-    data_file = config.data_file
-    data_file_path = os.path.join(data_directory, data_file)
+    data_directory  = config.data_dir
+    data_file       = config.data_file
+    data_file_path  = os.path.join(data_directory, data_file)
 
     #%% build the system
     # ------------------
@@ -162,9 +162,9 @@ def run_simulation():
             print('building animation.')
         
         with open(config_path, 'r') as configs_sim:
-            config_sim = json.load(configs_sim)
-            config_Ts = config_sim['simulation']['Ts']
-            config_dimens = config_sim['simulation']['dimens']
+            config_sim      = json.load(configs_sim)
+            config_Ts       = config_sim['simulation']['Ts']
+            config_dimens   = config_sim['simulation']['dimens']
             config_tactic_type = config_sim['simulation']['strategy']
 
         ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
@@ -174,7 +174,7 @@ def run_simulation():
         from experiments.experiment_manager import save_experiment
         save_experiment()
 
-# Entry point
+#%% Entry point
 # ------------
 if __name__ == "__main__":
 

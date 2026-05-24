@@ -6,22 +6,10 @@ This module implements pinning control for flocking as a lattice
 
 To do:
 - RL-enabled, adjusting lattice scale to optimize on some user-defined objective
-- Default objective is to maximize k-connectivity
-
-Graph representation:
-    - Let us consider V nodes (vertices, agents)
-    - Define E is a set of edges (links) as the set of ordered pairs
-    from the Cartesian Product V x V, E = {(a,b) | a in V and b in V}
-    - Then we consider Graph, G = {V,E} (nodes and edges)
-    - G is simple: (a,a) not in E \forall a in V 
-    - G is undirected: (a,b) in E <=> (b,a) in E
-    - Nodes i,j are neighbours if they share an edge, (i,j) in E
-    - d1=|N_1| is the degree of Node 1, or, the number of neighbours
+- Default objective to maximize k-connectivity
 
 # Pinning control is structured as follows:
     u =     {cohesion_term + alignment_term} + obstacle_term + navigation term
-
-Created on Tue Dec 20 13:32:11 2022
 
 Some related work:
     
@@ -41,17 +29,19 @@ Some default parameters:
     #hetero_gradient     = 0     # (this doesn't work) supports heterogeneous potential functions
 
     # define the method for lattice formation
-    flocking_method = 'lennard_jones'
-    #flocking_options = ['default','morse','lennard_jones','gromacs_soft_core']   
-    flocking_options = ['default','lennard_jones'] # only saber works for hetero, need to feed a/b updates in for lenard
+    flocking_method     = 'lennard_jones'
+    #flocking_options   = ['default','morse','lennard_jones','gromacs_soft_core']   
+    flocking_options    = ['default','lennard_jones'] # only saber works for hetero, need to feed a/b updates in for lenard
     
-                    # 'default'  = Olfati-saber flocking
-                    # 'morse'
-                    # 'lennard_jones'
-                    # 'gromacs_soft_core'
-                    # 'mixed' - randomly mix these
+        # 'default'  = Olfati-saber flocking
+        # 'morse'
+        # 'lennard_jones'
+        # 'gromacs_soft_core'
+        # 'mixed' - randomly mix these
 
 @author: tjards
+
+Created on Tue Dec 20 13:32:11 2022
 
 """
 
@@ -77,9 +67,8 @@ class Planner(BasePlanner):
     def __init__(self, config, **kwargs):
         super().__init__(config, **kwargs)
   
-
+        # extract pinning configs
         pinning_config =cfg.get_config(config, 'planner.techniques.pinning_lattice')
-
         self.hetero_lattice     = pinning_config.get('hetero_lattice', 0)
         self.learning           = pinning_config.get('learning', 0)
         self.learning_grid_size = pinning_config.get('learning_grid_size', -1)
@@ -91,6 +80,10 @@ class Planner(BasePlanner):
         self.d_init             = pinning_config.get('d', 7)
         self.d_prime            = pinning_config.get('d_prime_ratio', 0.6)*self.d_init            
         self.r_prime            = pinning_config.get('r_prime_ratio', 1.3)*self.d_prime
+
+        # extract agent configs
+        agents_config = cfg.get_config(config, 'agents')
+        self.nAgents = agents_config.get('nAgents', None)
 
         # default gains
         self.c1_a    = pinning_config.get('c1_a', 1.0) # interaction gain, position
@@ -105,28 +98,14 @@ class Planner(BasePlanner):
             print('Warning: learning lattice requires hetero lattice enabled to find local consensus. Enforcing.')
             self.hetero_lattice = 1
 
-        # extract agents config 
-        agents_config = cfg.get_config(config, 'agents')
-        self.nAgents = agents_config.get('nAgents', None)
-
-        # build a list of gradient options
-        flocking_options = ['default','morse','lennard_jones','gromacs_soft_core']  # note: default is olfati-saber
-
-        gradients_config = cfg.get_config(config, 'planner.techniques.gradients')
-        gradient_funcs = pinning_gradients_others.create_gradient_functions(gradients_config)
-
-
-        #from planner.techniques.gradient_tools import grad_morse_gradient as cohesion_term_mor
-        #from planner.techniques.gradient_tools import grad_lennard_jones as cohesion_term_len
-        #from planner.techniques.gradient_tools import  grad_gromacs_soft_core as cohesion_term_gro
-
-        self.cohesion_list = {}
-        self.cohesion_list['default'] = cohesion_term_default
-        #self.cohesion_list['morse'] = cohesion_term_mor
-        #self.cohesion_list['lennard_jones'] = cohesion_term_len
-        #self.cohesion_list['gromacs_soft_core'] = cohesion_term_gro
-        self.cohesion_list['morse'] = gradient_funcs['morse']
-        self.cohesion_list['lennard_jones'] = gradient_funcs['lennard_jones']
+        # configure gradients for cohesion 
+        flocking_options    = ['default','morse','lennard_jones','gromacs_soft_core']  # note: default is olfati-saber
+        gradients_config    = cfg.get_config(config, 'planner.techniques.gradients')
+        gradient_funcs      = pinning_gradients_others.create_gradient_functions(gradients_config)
+        self.cohesion_list  = {}
+        self.cohesion_list['default']           = cohesion_term_default
+        self.cohesion_list['morse']             = gradient_funcs['morse']
+        self.cohesion_list['lennard_jones']     = gradient_funcs['lennard_jones']
         self.cohesion_list['gromacs_soft_core'] = gradient_funcs['gromacs_soft_core']
 
         # build out a random list of gradients (for mixed case)
@@ -136,31 +115,24 @@ class Planner(BasePlanner):
             self.term_selected = [flocking_options[i] for i in term_indices.flatten()]
             print(f"Mixed flocking assignments: {self.term_selected}")
 
-        # graph parameters (standardized in base class)
-        self.sensor_range_matrix = self.r_max * np.ones((self.nAgents, self.nAgents))
-        self.connection_range_matrix = self.d_init * np.ones((self.nAgents, self.nAgents))
+        # graph parameters 
+        self.sensor_range_matrix        = self.r_max * np.ones((self.nAgents, self.nAgents))
+        self.connection_range_matrix    = self.d_init * np.ones((self.nAgents, self.nAgents))
         
     # form the lattice
     # -----------------
     def compute_cmd_a(self,states_q, states_p, targets, targets_v, k_node, reward_values, **kwargs):   
         
         # pull out the args (try .get() to ignore n/a cases)
-        # -----------------
         headings                = kwargs.get('quads_headings')
-        consensus_agent         = kwargs.get('consensus_lattice') # rename this object 
+        consensus_agent         = kwargs.get('consensus_lattice') 
         learning_agent          = kwargs.get('learning_lattice')
         #gradient_agent          = kwargs.get('estimator_gradients')
         directional             = kwargs.get('directional_graph')
         A                       = self.interaction_graph #= kwargs.get('A')
-        #local_k_connectivity    = kwargs.get('local_k_connectivity')
-        #pin_matrix              = self.pin_assignments #kwargs.get('pin_matrix')
-        
-        # safety checks
-        # -------------
-        # when using directional 
+
+        # directional mode needs headings
         if directional:
-            #if headings is None:
-            #    headings = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
             if 'consensus_lattice' in kwargs:
                 consensus_agent.headings = headings
         
@@ -168,17 +140,13 @@ class Planner(BasePlanner):
         if consensus_agent is not None and consensus_agent.d_weighted.shape[1] != states_q.shape[1]:
             raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', consensus_agent.d_weighted.shape[1], 'lattice parameters')
         
-        # learning processs (if applicable)
-        # ---------------------------------    
-        # execute the reinforcement learning, local case (if applicable)
+        # execute the reinforcement learning, local case (in development)
         if self.learning == 1: 
             
-            kwargs['learning_grid_size'] = self.learning_grid_size # consider adapting this with time
+            kwargs['learning_grid_size'] = self.learning_grid_size          # consider adapting this with time
             learning_agent.update_step(reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
-    
 
-    # initialize parameters
-        # ----------------------
+        # initialize parameters
         if self.hetero_lattice == 1:
             d = consensus_agent.d_weighted[k_node, k_node]
         else:
@@ -188,6 +156,7 @@ class Planner(BasePlanner):
 
         # search through each neighbour
         # -----------------------------
+
         for k_neigh in range(states_q.shape[1]):
             
             # except for itself:
@@ -200,7 +169,7 @@ class Planner(BasePlanner):
                 # check if the neighbour is in range
                 # ---------------------------------
                 
-                # use adjacency matrix (new)
+                # use adjacency matrix (based on graph)
                 if A[k_node,k_neigh] == 0:
                     in_range = False
                 else:
@@ -210,36 +179,24 @@ class Planner(BasePlanner):
                 # ---------------
                 if in_range:
                     
-                    # for the case iof mixed potential functions
+                    # compute cohesion
                     if self.flocking_method == 'mixed':
-                        
-                        u_int[:,k_node] += self.cohesion_list[self.term_selected[k_node]](self.c1_a,states_q, k_node, k_neigh, self.r_max, d)
-                    
-                        # here cohesion_term = term_list[term_indices[0][k_node]]
-                        #cohesion_term = copy.deepcopy(term_list[term_indices[0][k_node]])
-                        #d = d_mixed[k_node,0]
-                        
+                        u_int[:,k_node] += self.cohesion_list[self.term_selected[k_node]](self.c1_a,states_q, k_node, k_neigh, self.r_max, d)                
                     else:
-                        
                         u_int[:,k_node] += self.cohesion_list[self.flocking_method](self.c1_a,states_q, k_node, k_neigh, self.r_max, d)
-                        
 
-                    
+                    # compute alignment    
                     u_int[:,k_node] += alignment_term(self.c2_a, states_q, states_p, k_node, k_neigh, self.r_max, d)
-                    
-                    # I don't think this is what I'm supposed to bring in
-                    #gradient_agent.observed_gradients[0:gradient_agent.dimens,k_node, k_neigh] = u_int[0:gradient_agent.dimens,k_node]
-                    
-                    #if u_int[2,:].any() != 0:
-                    #    print('debug needed: 3D cmds in 2D')
                     
                     # seek consensus
                     if self.hetero_lattice == 1:
                         consensus_agent.update(k_node, k_neigh, states_q)   # update lattice via consensus
                         consensus_agent.prox_i[k_node, k_neigh] = 1         # annotate as in range     
+                
+                # if not in range 
                 else:
                     if self.hetero_lattice == 1:
-                        consensus_agent.prox_i[k_node, k_neigh] = 0      # annotate as not in range
+                        consensus_agent.prox_i[k_node, k_neigh] = 0         # annotate as not in range
             
         return u_int[:,k_node] 
 
@@ -247,7 +204,7 @@ class Planner(BasePlanner):
     # ---------------
     def compute_cmd_b(self, states_q, states_p, obstacles, walls, k_node):
         
-        u_obs = np.zeros((3,states_q.shape[1]))     # obstacles 
+        u_obs           = np.zeros((3,states_q.shape[1]))     
         u_obs[:,k_node] = obstacle_term(self.c1_b, self.c2_b, states_q, states_p, obstacles, walls, k_node, self.d_prime, self.r_prime)
         
         return u_obs[:,k_node] 
@@ -257,24 +214,23 @@ class Planner(BasePlanner):
     def compute_cmd_g(self, states_q, states_p, targets, targets_v, k_node, pin_matrix):
 
         # initialize 
-        u_nav = np.zeros((3,states_q.shape[1]))  
+        u_nav           = np.zeros((3,states_q.shape[1]))  
         u_nav[:,k_node] = pin_matrix[k_node,k_node]*navigation_term(self.c1_g, self.c2_g, states_q, states_p, targets, targets_v, k_node)
     
         return u_nav[:,k_node]
 
     # consolidate control signals
     # ---------------------------
-    #def compute_cmd(self, centroid, states_q, states_p, obstacles, walls, targets, targets_v, k_node, **kwargs):
     def compute_cmd(self, states, targets, index, **kwargs):
 
         # Extract from states
-        states_q = states[0:3, :]      # positions
-        states_p = states[3:6, :]      # velocities
-        targets_q = targets[0:3, :]    # target positions
-        targets_v = targets[3:6, :]    # target velocities
-        obstacles = kwargs.get('obstacles_plus')
-        walls = kwargs.get('walls')
-        k_node = index
+        states_q    = states[0:3, :]      # positions
+        states_p    = states[3:6, :]      # velocities
+        targets_q   = targets[0:3, :]    # target positions
+        targets_v   = targets[3:6, :]    # target velocities
+        obstacles   = kwargs.get('obstacles_plus')
+        walls       = kwargs.get('walls')
+        k_node      = index
 
         directional         = kwargs.get('directional_graph')
         
@@ -298,13 +254,9 @@ class Planner(BasePlanner):
         
         u_int = self.compute_cmd_a(states_q, states_p, targets_q, targets_v, k_node, reward_values, **kwargs)
         u_obs = self.compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
-        #u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, kwargs.get('pin_matrix'))
         u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, self.pin_assignments)
         
         cmd_i[:,k_node] = u_int + u_obs + u_nav
-        
-        #if cmd_i[2,:].any() != 0:
-        #    print('debug needed: 3D cmds in 2D')
         
         return cmd_i[:,k_node] #, u_int, u_nav, u_obs
 

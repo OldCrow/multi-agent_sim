@@ -12,7 +12,7 @@
         "dimens": 2,
         "verbose": 1,
         "system": "swarm",
-        "strategy": "encirclement",
+        "strategy": "pinning_lattice",
         "random_seed": 41,
         "f": 0,
         "experimental_save": false,

@@ -59,8 +59,6 @@ Below are some thematic examples, including visualizations.
 - [Dynamic Structures with Reinforcement Learning](./docs/readme_subpages/dynamic_structures.md) 
 - [Malicious Agents](./docs/readme_subpages/malicious_agents.md) 
 
-
-
 ---
 
 # Setup

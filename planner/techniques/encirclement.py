@@ -70,16 +70,16 @@ class Planner(BasePlanner):
         circle_config = cfg.get_config(config_data, 'planner.techniques.encirclement')
         
         # Store hyperparameters
-        self.c1_d = circle_config.get('c1_d', 2)                # position gain
-        self.c2_d = circle_config.get('c2_d', 2*np.sqrt(2))     # velocity gain
-        self.r_max = circle_config.get('r_max', 50)             # max sensing range 
-        self.r_desired = circle_config.get('r_desired', 5)      # desired encirclement radius
-        self.phi_dot_d = circle_config.get('phi_dot_d', 0.05)   # desired angular speed [rad/s]
-        self.ref_plane = circle_config.get('ref_plane', 'horizontal') # reference plane for encirclement 
-        TEMP_quat_0_0 = circle_config.get('quat_0_0', 0.0)      # orientation of disc
-        TEMP_quat_0_1 = circle_config.get('quat_0_1', 0.0)
-        TEMP_quat_0_2 = circle_config.get('quat_0_2', 0.0)
-        self.quat_0 = quat.e2q(np.array([TEMP_quat_0_0, TEMP_quat_0_1, TEMP_quat_0_2]))
+        self.c1_d       = circle_config.get('c1_d', 2)                # position gain
+        self.c2_d       = circle_config.get('c2_d', 2*np.sqrt(2))     # velocity gain
+        self.r_max      = circle_config.get('r_max', 50)             # max sensing range 
+        self.r_desired  = circle_config.get('r_desired', 5)      # desired encirclement radius
+        self.phi_dot_d  = circle_config.get('phi_dot_d', 0.05)   # desired angular speed [rad/s]
+        self.ref_plane  = circle_config.get('ref_plane', 'horizontal') # reference plane for encirclement 
+        TEMP_quat_0_0   = circle_config.get('quat_0_0', 0.0)      # orientation of disc
+        TEMP_quat_0_1   = circle_config.get('quat_0_1', 0.0)
+        TEMP_quat_0_2   = circle_config.get('quat_0_2', 0.0)
+        self.quat_0     = quat.e2q(np.array([TEMP_quat_0_0, TEMP_quat_0_1, TEMP_quat_0_2]))
 
         # compute desired separation (for analyzing results)
         nAgents = cfg.get_config(config_data, 'agents.nAgents')
@@ -121,10 +121,10 @@ class Planner(BasePlanner):
         
         # initialise global stuff
         # -----------------------
-        targets_encircle = targets.copy() 
-        points_i = np.zeros((3,state.shape[1]))
-        temp = np.zeros((3,1))
-        quatern_ = quat.quatjugate(self.quat_0)
+        targets_encircle    = targets.copy() 
+        points_i            = np.zeros((3,state.shape[1]))
+        temp                = np.zeros((3,1))
+        quatern_            = quat.quatjugate(self.quat_0)
         
         # Regulation of Radius (position control)
         # ------------------------------   
@@ -135,25 +135,32 @@ class Planner(BasePlanner):
 
             # to rotate with reference to horizontal
             if self.ref_plane == 'horizontal':
+
                 # rotate down to the reference plane
                 points_i[:,ii] = quat.rotate(quatern_,state[0:3,ii]-targets[0:3,ii])+targets[0:3,ii]
+                
                 # now find the desired position projected on the plane
                 temp[0:2,0] = directToCircle(targets[0:2,ii],points_i[0:2,ii],self.r_desired)
-                temp[2,0] = targets[2,ii] # at altitude
+                temp[2,0]   = targets[2,ii] # at altitude
+                
                 # now rotate back
                 new_pos_desired_i[:,ii] = quat.rotate(self.quat_0,temp.ravel()-targets[0:3,ii])+targets[0:3,ii]            
             
         # Regulation of Angular speed (velocity control)
         # ----------------------------------------------   
+        
         # express state with reference to target
         state_shifted = state - targets
             
         # to rotate with reference to horizontal
         if self.ref_plane == 'horizontal':
+
             # define a new unit vector, which is perp to plane 
             unit_v = np.array([0,0,1]).reshape((3,1))
+            
             # initialize a new state vector
             state_shifted_new = np.zeros((3,state.shape[1]))
+            
             # rotate each agent into the reference plane
             for ij in range(0,state.shape[1]):
                 state_shifted_new[:,ij] = quat.rotate(quatern_,state_shifted[0:3,ij])
@@ -161,6 +168,9 @@ class Planner(BasePlanner):
             # convert to polar coordinates
             polar_r, polar_phi = cart2polar(state_shifted_new[0,:], state_shifted_new[1,:])
 
+        # --------------------------------------------------
+        # BEGIN SENSOR SIMULATION - find the nearest neighbours 
+        # ---------------------------------------------------
         # sort by phi and save the indicies so we can reassemble
         polar_phi_sorted = np.sort(polar_phi, axis=0)
         polar_phi_argsort = np.argsort(polar_phi, axis=0) 
@@ -183,15 +193,19 @@ class Planner(BasePlanner):
                 ik = ii+1 # leading vehicle 
             
             # compute distances
-            dist_lag = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ij])
-            dist_lead = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ik])
+            dist_lag    = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ij])
+            dist_lead   = np.linalg.norm(state_shifted[0:3,ii]-state_shifted[0:3,ik])
             
             # if neighbours too far away, default to the desired encirclement speed
             if dist_lead > self.r_max or dist_lag > self.r_max:
                 phi_dot_desired_i[0,ii] = phi_dot_desired
                 continue
-            
-            # compute the desired phi-dot       
+
+        # -------------------------------------------------------------------
+        # END SENSOR SIMULATION  - sensors would be used to get here in real life 
+        # --------------------------------------------------------------------       
+
+            # compute the desired phi-dot 
             phi_dot_desired_i[0,ii] = phi_dot_i_desired(polar_phi_sorted[ii], polar_phi_sorted[ij], polar_phi_sorted[ik], phi_dot_desired)
         
         # convert the angular speeds back to cartesian (in the correct order)
@@ -223,7 +237,6 @@ class Planner(BasePlanner):
             targets_encircle[3:6,:] = -xy_dot_desired_i[:,:] 
 
         return targets_encircle, phiDot_out, polar_phi_argsort
-
 
     def get_params(self):
         return self.r_desired, self.phi_dot_d, self.ref_plane, self.quat_0
