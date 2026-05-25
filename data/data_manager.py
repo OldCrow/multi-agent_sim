@@ -66,15 +66,13 @@ def load_data_HDF5(group, key, file_path_h5):
                 # pull the values 
                 values = dataset[:]
                 
-                # Inspect the dataset
-                #print("Dataset shape:", dataset.shape)
-                #print("Dataset dtype:", dataset.dtype)
-                #print("Dataset value(s):", dataset[:])  # Print the values if it's a small dataset
                 
             else:
-                print("Key not found within group.")
+                #print("Key not found within group.")
+                raise KeyError(f"Key '{key}' not found in group '{group}'")
         else:
-            print("Group not found in the HDF5 file.")
+            #print("Group not found in the HDF5 file.")
+            raise KeyError(f"Group '{group}' not found in {file_path_h5}")
             
     # return the key and values
     return key, values
@@ -97,7 +95,6 @@ class History:
         self.obstacles_all       = np.zeros([nSteps, len(Obstacles.obstacles), Obstacles.nObs])
         self.centroid_all        = np.zeros([nSteps, len(Agents.centroid), 1])
         self.f_all               = np.ones(nSteps)
-        #self.lemni_all           = np.zeros([nSteps, Agents.nAgents])
         self.lemni_all           = np.zeros([nSteps, 2, Agents.nAgents]) # now supports 2-axis
         # metrics_order_all   = np.zeros((nSteps,7))
         # metrics_order       = np.zeros((1,7))
@@ -130,8 +127,6 @@ class History:
         self.centroid_all[0,:,:]     = Agents.centroid
         self.f_all[0]                = f
         self.metrics_order_all[0,:]  = self.metrics_order
-        #self.lemni                   = np.zeros([1, Agents.nAgents])
-        #self.lemni_all[0,:]          = Trajectory.lemni
         self.lemni_all[0,:,:]          = Trajectory.lemni       # now supports 2-axis
         self.pins_all[0,:,:]         = Controller.pin_matrix  
         self.connectivity[0,:,:]     = Controller.Graphs.A

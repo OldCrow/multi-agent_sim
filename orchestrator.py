@@ -26,22 +26,15 @@ Created on Mon Jan  4 12:45:55 2021
 
 #%% Import stuff
 # --------------
+
 import numpy as np
 import copy
-import os
-import json
-
-# custom packages
-from planner import trajectory
-from planner.techniques import pinning_lattice
 import utils.swarmgraph as graphical 
 import config.config as cfg
+import learner.conductor
 
 # configs
 config_loaded   = cfg.load_config('config/config.json')
-tactic_type     = cfg.get_config(config_loaded, 'simulation.strategy')
-
-import learner.conductor
 
 #%% Build the system
 # ------------------

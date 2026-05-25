@@ -68,17 +68,17 @@ class Agents:
     
     def __init__(self):
 
-        self.nAgents = agents_config.get('nAgents', None)
-        self.rAgents = agents_config.get('rAgents', None)
-        self.iSpread = agents_config.get('iSpread', None)
-        self.init_conditions = agents_config.get('init_conditions', None)
-        self.dynamics = agents_config.get('dynamics', None)
-        self.dynamics_type = agents_config.get('dynamics', None) # redundant, used by data manager
-        self.vmax = agents_config.get('vmax', None)
-        self.vmin = agents_config.get('vmin', None)
-        self.tactic_type = simulation_config.get('strategy', None)
-        self.dimens = simulation_config.get('dimens', None)
-        self.random_seeds   = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
+        self.nAgents            = agents_config.get('nAgents', None)
+        self.rAgents            = agents_config.get('rAgents', None)
+        self.iSpread            = agents_config.get('iSpread', None)
+        self.init_conditions    = agents_config.get('init_conditions', None)
+        self.dynamics           = agents_config.get('dynamics', None)
+        self.dynamics_type      = agents_config.get('dynamics', None) # redundant, used by data manager
+        self.vmax               = agents_config.get('vmax', None)
+        self.vmin               = agents_config.get('vmin', None)
+        self.tactic_type        = simulation_config.get('strategy', None)
+        self.dimens             = simulation_config.get('dimens', None)
+        self.random_seeds       = [random.uniform(0, 2*np.pi) for _ in range(self.nAgents)] # random seeds for each agent
         
         d_sep = 10
         if self.init_conditions == 'evenly_spaced':
@@ -191,12 +191,13 @@ class Agents:
                 self.llctrlList[quad_i].controller(self.quadList[quad_i], self.sDesList[quad_i], quadcopter_config.Ts)
      
     def compute_centroid(self, points):
-        length = points.shape[0]
-        sum_x = np.sum(points[:, 0])
-        sum_y = np.sum(points[:, 1])
-        sum_z = np.sum(points[:, 2])
-        centroid = np.array((sum_x/length, sum_y/length, sum_z/length), ndmin = 2)
-        return centroid.transpose() 
+        # length = points.shape[0]
+        # sum_x = np.sum(points[:, 0])
+        # sum_y = np.sum(points[:, 1])
+        # sum_z = np.sum(points[:, 2])
+        # centroid = np.array((sum_x/length, sum_y/length, sum_z/length), ndmin = 2)
+        # return centroid.transpose()
+        return np.mean(points, axis=0, keepdims=True).T 
     
     # order
     # -----

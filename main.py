@@ -160,14 +160,8 @@ def run_simulation():
 
         if config.verbose == 1:
             print('building animation.')
-        
-        with open(config_path, 'r') as configs_sim:
-            config_sim      = json.load(configs_sim)
-            config_Ts       = config_sim['simulation']['Ts']
-            config_dimens   = config_sim['simulation']['dimens']
-            config_tactic_type = config_sim['simulation']['strategy']
-
-        ani = animation_sim.animateMe(data_file_path, config_Ts, config_dimens, config_tactic_type)
+            
+        ani = animation_sim.animateMe(data_file_path, config.Ts, config.dimens, config.strategy)
 
     #%% experimental save
     if config.experimental_save:

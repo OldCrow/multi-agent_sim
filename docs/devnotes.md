@@ -15,6 +15,7 @@ Summary This project is a consolidation of numerous other smaller projects. I am
 - Store data online.
 - Make more robust to incorrect configs.
 - Build unit tests.
+- Build logging module. 
 
 # Project 2: Learning 
 
