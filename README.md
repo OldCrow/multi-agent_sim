@@ -17,31 +17,6 @@ Documentation:
 - Detailed project documentation is generated automatically by an LLM agent (most recently, Claude Haiku 4.5) after significant updates and pushed [here](./docs/documentation.md). 
 - I also maintain rough development notes for myself [here](./docs/devnotes.md).
 
----
-
-# Methodology
-
-- The swarming techniques above are all implemented as high-level trajectory planners, assuming underlying double integrator dynamics. 
-- When quadcopter dynamics are applicable, these command signals - which take the form of accelerations in Cartesian space - are then converted into velocity setpoints.
-- The quadcopters make use of 3 nested control loops (translational velocity, angular position, and angular velocity) to track the desired trajectory.
-- Here's how the systems architecture works:
-
-```mermaid
-%%{init: {'themeVariables': {'fontSize': '11px'}, 'flowchart': {'nodeSpacing': 20, 'rankSpacing': 30}}}%%
-flowchart TD
-    A["Entry \nmain.py"] --> C["Load configs\nconfig.json"]
-    C --> B["Build system\norchestrator.py"]
-    B --> D["Simulation loop"]
-    D --> E["Evolve dynamics\nagents.py"]
-    E --> F["Plan trajectory\nplanner/techniques/[selected].py"]
-    F --> G["Compute control signal\norchestrator.py"]
-    G --> H["Log data\ndata_manager.py"]
-    H --> D
-    H --> I["Visualize\nanimation_sim.py\nplot_sim.py"]
-```
-
-
----
 
 # Project Structure
 
@@ -65,7 +40,26 @@ flowchart TD
 ├── main.py                  # main script
 ```
 
----
+# Methodology
+
+- The swarming techniques above are all implemented as high-level trajectory planners, assuming underlying double integrator dynamics. 
+- When quadcopter dynamics are applicable, these command signals - which take the form of accelerations in Cartesian space - are then converted into velocity setpoints.
+- The quadcopters make use of 3 nested control loops (translational velocity, angular position, and angular velocity) to track the desired trajectory.
+- Here's how the systems architecture works:
+
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '11px'}, 'flowchart': {'nodeSpacing': 20, 'rankSpacing': 30}}}%%
+flowchart TD
+    A["Entry \nmain.py"] --> C["Load configs\nconfig.json"]
+    C --> B["Build system\norchestrator.py"]
+    B --> D["Simulation loop"]
+    D --> E["Evolve dynamics\nagents.py"]
+    E --> F["Plan trajectory\nplanner/techniques/[selected].py"]
+    F --> G["Compute control signal\norchestrator.py"]
+    G --> H["Log data\ndata_manager.py"]
+    H --> D
+    H --> I["Visualize\nanimation_sim.py\nplot_sim.py"]
+```
 
 # Examples
 
@@ -74,8 +68,6 @@ Below are some thematic examples, including visualizations.
 - [Basic Interactions](./docs/readme_subpages/interactions.md) 
 - [Dynamic Structures with Reinforcement Learning](./docs/readme_subpages/dynamic_structures.md) 
 - [Malicious Agents](./docs/readme_subpages/malicious_agents.md) 
-
----
 
 # Setup
 
@@ -91,8 +83,6 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
----
-
 # Operation
 
 Most parameters are centralized in `config/config.json`. Some of the learning-related parameters are still stored within the specific modules as they are in development, but these will be moved into the config in later versions. There is a small test capability you can run to verify configuration is sound:
@@ -106,10 +96,6 @@ To run a simulation, adjust the parameters as desired and then run as follows fr
 ```bash
  python main.py
 ```
-
-
-
----
 
 # References 
 
