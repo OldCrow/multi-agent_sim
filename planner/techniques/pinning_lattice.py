@@ -73,9 +73,7 @@ class Planner(BasePlanner):
         self.learning           = pinning_config.get('learning', 0)
         self.learning_grid_size = pinning_config.get('learning_grid_size', -1)
         self.flocking_method    = pinning_config.get('flocking_method', 'lennard_jones')
-        #self.r                  = pinning_config.get('r', 10)
         self.r_max              = pinning_config.get('r_max', 13)
-        #self.d                  = pinning_config.get('d', 7)
         self.d_min              = pinning_config.get('d_min', 5)
         self.d_init             = pinning_config.get('d', 7)
         self.d_prime            = pinning_config.get('d_prime_ratio', 0.6)*self.d_init            
@@ -93,10 +91,12 @@ class Planner(BasePlanner):
         self.c1_g    = pinning_config.get('c1_g', 2.0) # navigation gain, position
         self.c2_g    = pinning_config.get('c2_g', 4.472) # navigation gain, velocity
  
-        # learning requires heterolattice
+        # learning requires heterolattice (in dev)
+        '''
         if self.learning == 1 and self.hetero_lattice != 1:
             print('Warning: learning lattice requires hetero lattice enabled to find local consensus. Enforcing.')
             self.hetero_lattice = 1
+        '''
 
         # configure gradients for cohesion 
         flocking_options    = ['default','morse','lennard_jones','gromacs_soft_core']  # note: default is olfati-saber
@@ -121,31 +121,31 @@ class Planner(BasePlanner):
         
     # form the lattice
     # -----------------
-    def compute_cmd_a(self,states_q, states_p, targets, targets_v, k_node, reward_values, **kwargs):   
+    def compute_cmd_a(self,states_q, states_p, targets, targets_v, k_node, **kwargs):   
         
-        # pull out the args (try .get() to ignore n/a cases)
+        # pull out the args 
         headings                = kwargs.get('quads_headings')
         consensus_agent         = kwargs.get('consensus_lattice') 
-        learning_agent          = kwargs.get('learning_lattice')
-        #gradient_agent          = kwargs.get('estimator_gradients')
+        #learning_agent          = kwargs.get('learning_lattice') # in dev
         directional             = kwargs.get('directional_graph')
         A                       = self.interaction_graph #= kwargs.get('A')
+        #reward_values           = kwargs.get('reward_values') # in dev
 
         # directional mode needs headings
-        if directional:
-            if 'consensus_lattice' in kwargs:
-                consensus_agent.headings = headings
+        if directional and consensus_agent is not None:
+            consensus_agent.headings = headings
         
         # ensure the parameters match the agents
         if consensus_agent is not None and consensus_agent.d_weighted.shape[1] != states_q.shape[1]:
             raise ValueError("Error! There are ", states_q.shape[1], 'agents, but ', consensus_agent.d_weighted.shape[1], 'lattice parameters')
         
-        # execute the reinforcement learning, local case (in development)
+        # execute the reinforcement learning, local case (in dev)
+        '''
         if self.learning == 1: 
             
             kwargs['learning_grid_size'] = self.learning_grid_size          # consider adapting this with time
             learning_agent.update_step(reward_values, targets, states_q, states_p, k_node, consensus_agent, **kwargs)
-
+        '''
         # initialize parameters
         if self.hetero_lattice == 1:
             d = consensus_agent.d_weighted[k_node, k_node]
@@ -231,14 +231,15 @@ class Planner(BasePlanner):
         obstacles   = kwargs.get('obstacles_plus')
         walls       = kwargs.get('walls')
         k_node      = index
-
-        directional         = kwargs.get('directional_graph')
+        directional = kwargs.get('directional_graph')
         
         # ensure there are heading available, if needed
         if directional and kwargs.get('quads_headings') is None:
             kwargs['quads_headings'] = np.zeros((states_q.shape[1])).reshape(1,states_q.shape[1])
-            print('no headings avail, assuming 0')
+            #print('no headings avail, assuming 0')
         
+        # rewards for lattice learning (in dev)
+        '''
         if 'learning_lattice' in kwargs:
             learning_agent  = kwargs.get('learning_lattice')
             if learning_agent.reward_method == 'landmarks':
@@ -248,11 +249,13 @@ class Planner(BasePlanner):
                 reward_values       = reward_values_full[k_node]
         else:
             reward_values = 0
+        kwargs['reward_values'] = reward_values
+        '''
         
         # initialize 
         cmd_i = np.zeros((3,states_q.shape[1]))
         
-        u_int = self.compute_cmd_a(states_q, states_p, targets_q, targets_v, k_node, reward_values, **kwargs)
+        u_int = self.compute_cmd_a(states_q, states_p, targets_q, targets_v, k_node, **kwargs) # 0 is a placeholder for reward signal
         u_obs = self.compute_cmd_b(states_q, states_p, obstacles, walls, k_node)
         u_nav = self.compute_cmd_g(states_q, states_p, targets_q, targets_v, k_node, self.pin_assignments)
         

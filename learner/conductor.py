@@ -11,29 +11,23 @@ Coordinates all learning modules. Like orchestrator does for control.
 """
 
 # import stuff
-# -----------
 import os
 import json
-#import config.configs_tools as configs_tools
 import numpy as np
-
 from agents.quadcopter_module import config
-#config_path=configs_tools.config_path
 
 
-# load configs
-# ------------
-
-#def initialize(Agents, tactic_type, learning_ctrl, Ts, config_path):
 def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
     
     Learners = {}
 
+    # general use CALA model (not tied to anything specific)
     if learning_ctrl == 'CALA':
         from learner import CALA_control
         CALA = CALA_control.CALA(config)
         Learners['CALA_ctrl'] = CALA
     
+    # learning specific to lemniscates
     if tactic_type == 'lemniscates':
         planner_configs = config.get('planner', {})
         lemni_config = planner_configs.get('techniques', {}).get('lemniscates', {})
@@ -42,60 +36,57 @@ def initialize(Agents, tactic_type, learning_ctrl, Ts, config):
             lemni_CALA_xz = lemni_CALA.CALA(config)
             Learners['lemni_CALA_xz'] = lemni_CALA_xz
 
-
+    # learning specific to pinning lattice
     if tactic_type == 'pinning_lattice':
+
+        # pull out configs 
         planner_configs = config['planner']['techniques']['pinning_lattice']
-        
-        do = True
-        if do:
+        lattice_consensus = planner_configs['hetero_lattice']
 
-            # see what kind of learning is enabled
-            lattice_consensus = planner_configs['hetero_lattice']
+        # lattice learner (in dev)
+        '''
+        lattice_learner = planner_configs['learning']
+        if lattice_learner == 1 and lattice_consensus != 1:
+            print('Warning: learning lattice requires hetero_lattice enabled. Enforcing hetero_lattice=1.')
+            planner_configs['hetero_lattice'] = 1
+            lattice_consensus = 1
+        '''
+
+        if lattice_consensus == 1:
+            import learner.consensus_lattice as consensus_lattice
+
+            Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['d_min'], planner_configs['d'], planner_configs['r_max'])
+            Learners['consensus_lattice'] = Consensuser
+            
+            # lattice learner (in dev)
+            '''
             lattice_learner = planner_configs['learning']
+            if lattice_learner == 1:
 
-            if lattice_learner == 1 and lattice_consensus != 1:
-                print('Warning: learning lattice requires hetero_lattice enabled. Enforcing hetero_lattice=1.')
-                planner_configs['hetero_lattice'] = 1
-                lattice_consensus = 1
-
-
-            if lattice_consensus == 1:
-                import learner.consensus_lattice as consensus_lattice
-
-                Consensuser = consensus_lattice.Consensuser(Agents.nAgents, 1, planner_configs['d_min'], planner_configs['d'], planner_configs['r_max'])
-                
-                #LOAD
-                Learners['consensus_lattice'] = Consensuser
-                
-                # we can also tune these lattice sizes (optional)
-                lattice_learner = planner_configs['learning']
+                # DEBUF: this isn't ready yet
                 if lattice_learner == 1:
+                    raise NotImplementedError("ERROR: Learning Lattice feature still in development.")
 
-                    # DEBUF: this isn't ready yet
-                    if lattice_learner == 1:
-                        raise NotImplementedError("ERROR: Learning Lattice feature still in development.")
-
-                    # in dev code
-                    import learner.QL_learning_lattice as learning_lattice
+                # in dev code
+                import learner.QL_learning_lattice as learning_lattice
+                
+                # initiate the learning agent
+                Learning_agent = learning_lattice.q_learning_agent(Consensuser.params_n)
+                
+                # ensure parameters match controller
+                if Consensuser.d_weighted.shape[1] != len(Learning_agent.action):
+                    raise ValueError("Error! Mis-match in dimensions of controller and RL parameters")
+                
+                # overide the module-level parameter selection
+                for i in range(Consensuser.d_weighted.shape[1]):
+                    Learning_agent.match_parameters_i(Consensuser, i)
                     
-                    # initiate the learning agent
-                    Learning_agent = learning_lattice.q_learning_agent(Consensuser.params_n)
-                    
-                    # ensure parameters match controller
-                    if Consensuser.d_weighted.shape[1] != len(Learning_agent.action):
-                        raise ValueError("Error! Mis-match in dimensions of controller and RL parameters")
-                    
-                    # overide the module-level parameter selection
-                    for i in range(Consensuser.d_weighted.shape[1]):
-                        Learning_agent.match_parameters_i(Consensuser, i)
-                        
-                    # LOAD    
-                    Learners['learning_lattice'] = Learning_agent
-
-        
+                # LOAD    
+                Learners['learning_lattice'] = Learning_agent
+                '''
+            
     return Learners
         
-
 def update_args(Agents, Controller, tactic_type, kwargs):
     
     # we'll need the record of lemni parameters  
@@ -117,18 +108,20 @@ def update_args(Agents, Controller, tactic_type, kwargs):
       
 def pinning_update_args(Controller, kwargs_pinning):
     
-        
     # learning stuff (if applicable)
     if 'consensus_lattice' in Controller.Learners:
         kwargs_pinning['consensus_lattice'] = Controller.Learners['consensus_lattice']
         if 'learning_lattice' in Controller.Learners:
             kwargs_pinning['learning_lattice'] = Controller.Learners['learning_lattice']
     
+    # in dev
+    '''
     if 'estimator_gradients' in Controller.Learners:
         kwargs_pinning['estimator_gradients'] = Controller.Learners['estimator_gradients']
         # reset the sum for pins
         Controller.Learners['estimator_gradients'].C_sum[0:Controller.dimens, 0:Controller.nAgents] = np.zeros((Controller.dimens, Controller.nAgents)) 
         kwargs_pinning['pin_matrix'] = Controller.pin_matrix
+    '''
         
     return kwargs_pinning
 
@@ -139,6 +132,8 @@ def pinning_update_lattice(Controller):
     if 'consensus_lattice' in Controller.Learners:
         Controller.lattice = Controller.Learners['consensus_lattice'].d_weighted
         
+    # in dev
+    '''
     if 'estimator_gradients' in Controller.Learners:
         # reset the by_pin sums
         Controller.Learners['estimator_gradients'].C_sum_bypin[0:Controller.dimens, 0:Controller.nAgents] = np.zeros((Controller.dimens, Controller.nAgents)) 
@@ -153,7 +148,8 @@ def pinning_update_lattice(Controller):
             component_index += 1
             #print(self.Learners['estimator_gradients'].C_sum_bypin)
         #print(self.Learners['estimator_gradients'].C_sum_bypin[:, :])
-
+    '''
+    
 def lemniscate_update(Controller, state, targets, k_node, **kwargs_cmd):
 
     if 'lemni_CALA_xz' in Controller.Learners:

@@ -115,6 +115,7 @@ class Controller:
         self.connectivity_slack     = cfg.get_config(config._data, 'orchestrator.connectivity_slack') # some slack to assess connectedness
         self.Graphs                 = graphical.Swarmgraph(state, criteria_table)  
         self.Graphs_connectivity    = graphical.Swarmgraph(state, criteria_table)
+        self.sensor_aperature       = cfg.get_config(config._data, 'orchestrator.sensor_aperature')  
 
         # parameters used to update graphs and pins 
         self.r_matrix       = self.planners[config.strategy].sensor_range_matrix        # range at which agents can sense each other 
@@ -178,6 +179,7 @@ class Controller:
         kwargs_cmd['centroid']          = centroid 
         kwargs_cmd['obstacles_plus']    = obstacles_plus
         kwargs_cmd['walls']             = walls
+        kwargs_cmd['aperature']         = self.sensor_aperature   
 
         # pinning has a lot of unique needs
         if tactic_type == 'pinning_lattice':

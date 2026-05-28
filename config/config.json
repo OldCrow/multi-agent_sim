@@ -20,7 +20,7 @@
     },
     "agents": {
         "nAgents": 7,
-        "dynamics": "double integrator",
+        "dynamics": "double_integrator",
         "rAgents": 0.5,
         "iSpread": 40,
         "init_conditions": "random",
@@ -231,15 +231,6 @@
             "kicking": false,
             "kicking_factor": 1.3,
             "sigmoidize": false
-        },
-        "QL_learning_lattice": {
-            "placeholder": 1.0
-        },
-        "consensus": {
-            "placeholder": 1.0
-        },
-        "gradient_estimation": {
-            "placeholder": 1.0
         }
     },
     "data": {
@@ -252,8 +243,5 @@
     },
     "experiments": {
         "placeholder": false
-    },
-    "learners": {
-        "consensus_lattice": false
     }
 }

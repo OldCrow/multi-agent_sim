@@ -86,6 +86,9 @@ class Swarmgraph:
                         if self.criteria_table['aperature']:
                             sensor_aperature = kwargs.get('aperature')
                             headings    = kwargs.get('quads_headings')
+                            # if there are no heads, set to zero
+                            if headings is None:
+                                headings = np.zeros((1, self.nNodes))
                             # get vector for heading
                             v_a = np.array((np.cos(headings[0,i]), np.sin(headings[0,i]), 0 )) # move outside later
                             # check sensor range 
