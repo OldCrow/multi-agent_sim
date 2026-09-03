@@ -20,7 +20,7 @@
     },
     "agents": {
         "nAgents": 7,
-        "dynamics": "double_integrator",
+        "dynamics": "double integrator",
         "rAgents": 0.5,
         "iSpread": 40,
         "init_conditions": "random",
