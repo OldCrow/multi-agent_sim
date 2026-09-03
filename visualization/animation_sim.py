@@ -538,7 +538,9 @@ def animateMe(data_file_path, Ts, dimens, tactic_type):
     # one collection holding every lattice edge (per-segment colors), O(edges)
     if dimens == 3:
         lattices = Line3DCollection([], linestyles='--', linewidths=1)
-        ax.add_collection3d(lattices)
+        # autolim=False: axis limits are managed by the camera logic, and
+        # autoscaling from an empty collection raises in matplotlib >= 3.9
+        ax.add_collection3d(lattices, autolim=False)
     else:
         lattices = LineCollection([], linestyles='--', linewidths=1)
         ax.add_collection(lattices)
