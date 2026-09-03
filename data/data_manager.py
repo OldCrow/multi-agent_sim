@@ -95,8 +95,69 @@ def _save_sparse_hdf5(group, key, sparse_list, nNodes):
     sparse_grp.create_dataset('offsets', data=np.array(offsets, dtype=np.int64))
 
 
+class LazySparseSeries:
+    """Lazy view over a sparse COO time series of (nNodes, nNodes) matrices.
+
+    Holds only the COO arrays (O(total nonzeros) memory) and reconstructs
+    dense per-step matrices on demand, so loading connectivity/lattice
+    history at large n does not allocate the full (nSteps, n, n) block.
+
+    Supported access patterns (all used by the visualization code):
+        s[i]             -> dense (n, n) matrix for step i (negative i ok)
+        s[i, ...]        -> any further indexing applied to that step's matrix
+        len(s), s.shape  -> series dimensions
+        np.asarray(s)    -> full dense (nSteps, n, n); memory-heavy escape
+                            hatch for whole-series numerics and tests
+    """
+
+    _CACHE_MAX = 4  # steps kept dense; animation re-reads the same step n^2 times
+
+    def __init__(self, rows, cols, data, offsets, nSteps, nNodes):
+        self._rows = rows
+        self._cols = cols
+        self._data = data
+        self._offsets = offsets
+        self.shape = (nSteps, nNodes, nNodes)
+        self.ndim = 3
+        self._cache = {}
+
+    def __len__(self):
+        return self.shape[0]
+
+    def _step(self, i):
+        i = int(i)
+        if i < 0:
+            i += self.shape[0]
+        if not 0 <= i < self.shape[0]:
+            raise IndexError(f"step {i} out of range for {self.shape[0]} steps")
+        if i in self._cache:
+            return self._cache[i]
+        dense = np.zeros(self.shape[1:])
+        start, end = self._offsets[i], self._offsets[i + 1]
+        if end > start:
+            dense[self._rows[start:end], self._cols[start:end]] = self._data[start:end]
+        if len(self._cache) >= self._CACHE_MAX:
+            self._cache.pop(next(iter(self._cache)))
+        self._cache[i] = dense
+        return dense
+
+    def __getitem__(self, idx):
+        if isinstance(idx, tuple):
+            step = self._step(idx[0])
+            return step[idx[1:]] if len(idx) > 1 else step
+        return self._step(idx)
+
+    def __array__(self, dtype=None, copy=None):
+        result = np.zeros(self.shape)
+        for i in range(self.shape[0]):
+            start, end = self._offsets[i], self._offsets[i + 1]
+            if end > start:
+                result[i, self._rows[start:end], self._cols[start:end]] = self._data[start:end]
+        return result if dtype is None else result.astype(dtype)
+
+
 def _load_sparse_hdf5(group, key):
-    """Load sparse COO data from HDF5 and reconstruct as dense 3D array."""
+    """Load sparse COO data from HDF5 as a LazySparseSeries (dense per step on demand)."""
     sparse_grp = group[key]
     nNodes = int(sparse_grp.attrs['nNodes'])
     nSteps = int(sparse_grp.attrs['nSteps'])
@@ -104,13 +165,7 @@ def _load_sparse_hdf5(group, key):
     cols = sparse_grp['cols'][:]
     data = sparse_grp['data'][:]
     offsets = sparse_grp['offsets'][:]
-
-    result = np.zeros((nSteps, nNodes, nNodes))
-    for i in range(nSteps):
-        start, end = offsets[i], offsets[i + 1]
-        if end > start:
-            result[i, rows[start:end], cols[start:end]] = data[start:end]
-    return result
+    return LazySparseSeries(rows, cols, data, offsets, nSteps, nNodes)
 
 
 def save_data_HDF5(data, file_path):

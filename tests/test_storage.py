@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from data.data_manager import (
     History, save_data_HDF5, load_data_HDF5,
     _reconstruct_dense_3d, _save_sparse_hdf5, _load_sparse_hdf5,
-    _SPARSE_FIELDS,
+    _SPARSE_FIELDS, LazySparseSeries,
 )
 
 
@@ -228,6 +228,69 @@ class TestDenseReconstruction:
         np.testing.assert_array_equal(dense[0], np.zeros((5, 5)))
         np.testing.assert_array_equal(dense[1], np.eye(5))
         np.testing.assert_array_equal(dense[2], np.zeros((5, 5)))
+
+
+class TestLazySparseSeries:
+    """Loading sparse COO must return a lazy view supporting every access
+    pattern the visualization code uses, without densifying the series."""
+
+    @pytest.fixture
+    def loaded_series(self):
+        import h5py
+        n, nSteps = 9, 12
+        rng = np.random.default_rng(0)
+        mats = []
+        for _ in range(nSteps):
+            m = np.zeros((n, n))
+            idx = rng.integers(0, n, size=(6, 2))
+            m[idx[:, 0], idx[:, 1]] = rng.uniform(0.5, 2.0, size=6)
+            np.fill_diagonal(m, 0)
+            mats.append(m)
+
+        with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as f:
+            path = f.name
+        try:
+            with h5py.File(path, 'w') as f:
+                group = f.create_group('History')
+                _save_sparse_hdf5(group, 'connectivity',
+                                  [sparse.csr_matrix(m) for m in mats], n)
+            _, loaded = load_data_HDF5('History', 'connectivity', path)
+            yield loaded, mats
+        finally:
+            os.unlink(path)
+
+    def test_returns_lazy_view(self, loaded_series):
+        loaded, mats = loaded_series
+        assert isinstance(loaded, LazySparseSeries)
+        assert loaded.shape == (len(mats), 9, 9)
+        assert len(loaded) == len(mats)
+
+    def test_step_indexing(self, loaded_series):
+        loaded, mats = loaded_series
+        np.testing.assert_allclose(loaded[3], mats[3])
+        np.testing.assert_allclose(loaded[3, :, :], mats[3])
+        np.testing.assert_allclose(loaded[-1, :, :], mats[-1])
+        assert loaded[5, 2, 4] == mats[5][2, 4]
+
+    def test_fancy_indexing_on_step(self, loaded_series):
+        loaded, mats = loaded_series
+        rows, cols = np.nonzero(mats[7])
+        np.testing.assert_allclose(loaded[7][rows, cols], mats[7][rows, cols])
+
+    def test_dense_escape_hatch(self, loaded_series):
+        loaded, mats = loaded_series
+        np.testing.assert_allclose(np.asarray(loaded), np.stack(mats))
+
+    def test_per_step_nonzero_counts(self, loaded_series):
+        # pattern used by plot_sim's constraint-violation plot
+        loaded, mats = loaded_series
+        counts = [np.count_nonzero(loaded[i]) for i in range(len(loaded))]
+        assert counts == [np.count_nonzero(m) for m in mats]
+
+    def test_out_of_range_step_raises(self, loaded_series):
+        loaded, _ = loaded_series
+        with pytest.raises(IndexError):
+            loaded[len(loaded)]
 
 
 if __name__ == '__main__':

@@ -314,9 +314,11 @@ def plotMe(data_file_path):
         ax2.tick_params(axis='y',colors ='tab:blue')
         #ax2.invert_yaxis()
         
-        # vectorized: count nonzeros per timestep
-        count_violations = np.count_nonzero(
-            lattice_violations.reshape(len(t_all), -1), axis=1).reshape(-1, 1)
+        # count nonzeros per timestep (per-step so lazy-loaded sparse series
+        # never has to materialize the full (nSteps, n, n) block)
+        count_violations = np.array([
+            np.count_nonzero(lattice_violations[i]) for i in range(len(t_all))
+        ]).reshape(-1, 1)
             
         ax2.plot(t_all[start::], count_violations[start::], color='tab:blue',linestyle = '--', label = 'Constraint Violation')
         ax2.yaxis.set_major_locator(MaxNLocator(integer=True))
