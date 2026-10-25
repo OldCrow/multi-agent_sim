@@ -30,7 +30,7 @@ The `use_optimized` flag in `config/config.json` (`simulation.use_optimized`, de
 
 **`utils/spatial.py`** — KD-tree spatial index wrapping `scipy.spatial.cKDTree`. Provides O(n log n) neighbor discovery via `query_all_pairs`, `query_ball_tree`, `query_neighbors`, and `query_pairs_with_distances`. No external dependencies beyond scipy (already in requirements.txt).
 
-**`tests/`** — 78 tests across 5 test files, plus 5 benchmark scripts. Tests cover spatial index correctness, graph equivalence (sparse vs brute-force), planner vectorized-vs-scalar equivalence, HDF5 round-trip, and plotting computation correctness.
+**`tests/`** — 86 tests across 6 test files, plus 8 benchmark scripts. Tests cover spatial index correctness, graph equivalence (sparse vs brute-force), planner vectorized-vs-scalar equivalence, HDF5 round-trip (including every lazy-series consumer access pattern), and plotting computation correctness.
 
 ### Modified files
 
@@ -77,7 +77,7 @@ The `use_optimized` flag in `config/config.json` (`simulation.use_optimized`, de
 **`data/data_manager.py`**
 - `History`: connectivity, pins_all, lattices, lattice_violations stored as lists of `scipy.sparse.csr_matrix` instead of dense 3D arrays.
 - `save_data_HDF5`: sparse fields saved as dense (backward compat) below 2 GB threshold, or as COO format (rows/cols/data/offsets) above.
-- `load_data_HDF5`: auto-detects sparse COO format and reconstructs dense for visualization compatibility.
+- `load_data_HDF5`: auto-detects sparse COO format and returns a `LazySparseSeries` holding only the COO arrays (O(total nonzeros)). Dense per-step matrices are built on demand, with a small LRU cache for the animation's repeated same-step reads. All visualization access patterns are supported (per-step slice, scalar, negative index, fancy indexing), and `np.asarray()` densifies the whole series as an escape hatch. Loading a sparse n=1000, 4500-step run no longer reconstructs ~36 GB of dense arrays at read time.
 
 **`agents/agents.py`**
 - `order()`: replaced O(n²) Python double loop with matrix multiply (`states_p.T @ states_p`).
@@ -86,7 +86,10 @@ The `use_optimized` flag in `config/config.json` (`simulation.use_optimized`, de
 - Distance-from-target: replaced double loop with `np.linalg.norm(diffs[:, 0:3, :], axis=1)`. Also corrected upstream bug: original used all 6 state dimensions (position + velocity) in a spatial distance norm labeled [m]; now uses position-only (0:3).
 - Distance-from-obstacles: replaced triple loop with broadcast + norm.
 - K-connectivity stats: replaced per-timestep loop with `np.mean/min/max(axis=1)`.
-- Constraint violations: replaced per-timestep loop with `np.count_nonzero(axis=1)`.
+- Constraint violations: counts nonzeros per step, which works directly on the lazy sparse view without materializing the full series.
+
+**`visualization/animation_sim.py`**
+- Lattice connection overlay: replaced the n×n grid of per-pair `Line2D` artists (updated by looping all pairs every frame — 250k artists at n=500) with a single `LineCollection` (`Line3DCollection` in 3D). Each frame builds segments only for nonzero adjacency entries, with per-segment colors distinguishing connected pairs from merely in-range ones; distance and threshold checks are vectorized over edges. Per-frame work scales with edge count instead of n². Visual output verified unchanged frame-by-frame on the sample config.
 
 **`config/config.json`**
 - Added `simulation.use_optimized` (default `true`): toggles vectorized planner path.
@@ -175,13 +178,17 @@ The original `plot_sim.py` computed `np.linalg.norm(states_all[i,:,j] - targets_
 
 Observed scaling is O(n^1.0–1.15) across the full range, confirming near-linear behavior. Memory stable throughout all runs (no heap fragmentation).
 
+**Animation lattice rendering** (n=500, real sim data; `tests/benchmark_animation.py`):
+
+Per-frame update and draw is ~35× faster on the `LineCollection` path, and setup no longer creates the 250k per-pair artists matplotlib had to manage at that agent count. Reference numbers from the measuring machine are recorded in the benchmark's docstring.
+
 ## Future Work
 
 The following improvements were identified during optimization but deferred as out of scope for this effort.
 
 ### Animation code (`visualization/animation_sim.py`)
 
-The animation module loads `connectivity` and `pins_all` from HDF5 as dense arrays and draws connection lines by iterating all agent pairs per frame. At large n this has two issues: the HDF5 load reconstructs dense n×n arrays (our sparse save handles storage, but reconstruction is O(n²) per timestep), and the per-frame rendering iterates O(n²) pairs to draw connections. Practical improvements include lazy frame-by-frame loading, sparse connection drawing (iterate edges not all pairs), skipping connection lines above an agent threshold, and frame downsampling.
+Lazy frame-by-frame HDF5 loading and O(edges) connection rendering, originally listed here, are now implemented (see `data/data_manager.py` and `visualization/animation_sim.py` under Changes by File). Remaining candidates: skipping connection lines entirely above an agent threshold, and frame downsampling for very long runs. Note that `save_data_HDF5` still writes dense below the 2 GB threshold for backward compatibility, so the lazy loader engages only when sparse COO groups are present.
 
 ### Module-level config reads
 
